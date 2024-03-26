@@ -74,8 +74,8 @@ def get_unaccessible_portion(accessible_portions):
             chrome = chromosome
             last_index = end_index + 1
             break
-    print("chromo", chrome)
-    print("Last index", last_index)
+    #print("chromo", chrome)
+    #print("Last index", last_index)
     for i, (chromosome, start_index, end_index) in enumerate(accessible_portions):
         if i == len(accessible_portions) - 1:
             continue #skipping the last iteration
@@ -113,10 +113,11 @@ def create_unaccessible_bed_file(output_filename, intervals):
 
 #import subprocess
 
-def bed_to_txt(bed_file):
+def bed_to_txt(bed_file, output_txt_file):
     reference_fasta = "/users/saedunu/reference/hg38.fa"
     bed_filename = "/users/saedunu/" + bed_file
-    output_txt = input("Enter the file name to extract txt file from bed file-{}: ".format(bed_file))
+    #output_txt = input("Enter the file name to extract txt file from bed file-{}: ".format(bed_file))
+    output_txt = output_txt_file
     output_filename = "/users/saedunu/" + output_txt
     bash_command = "bedtools getfasta -fi {} -bed {} -fo {}".format(reference_fasta, bed_filename, output_filename)
 
@@ -131,7 +132,7 @@ def bed_to_txt(bed_file):
     return output_txt
 
 
-def crop_unaccess_sequences(input_filename, output_filename, optimal):
+def crop_final_sequences(input_filename, output_filename, optimal):
     sequences = []
     with open(input_filename, 'r') as f:
         for line in f:
@@ -140,7 +141,7 @@ def crop_unaccess_sequences(input_filename, output_filename, optimal):
             sequences.append(line.strip())
     
     optimal_length = optimal
-    print("optimal unaccess length:", optimal_length)
+    #print("optimal unaccess length:", optimal_length)
     
     cropped_sequences = [seq[(len(seq) - optimal_length) // 2:(len(seq) + optimal_length) // 2] for seq in sequences if len(seq) >= optimal_length]
 
@@ -170,54 +171,81 @@ for i in range(len(link_list)):
 
     unzipped_bed_file = os.path.splitext(gz_filename)[0]
     access_bed_list.append(gunzip_file(gz_filename, unzipped_bed_file))
-print(access_bed_list)
+print("Access sequences bed list: \n", access_bed_list)
+print('\n')
 
 bedtool_txt_access_list = []
 
 for i in range(len(access_bed_list)):
-    bedtool_txt_access_list.append(bed_to_txt(access_bed_list[i]))
-print(bedtool_txt_access_list)
+    output_txt_filename = f"access_seq{i+1}.txt"
+    bedtool_txt_access_list.append(bed_to_txt(access_bed_list[i], output_txt_filename))
+print("Access sequences list: \n", bedtool_txt_access_list)
+print('\n')
 
 trim_access_seq_list = []
 optimal_length_list = []
 for i in range(len(bedtool_txt_access_list)):
-    access_output_filename = input("Enter filename to store trimmed accessible file- {}: ".format(i+1))
+    #access_output_filename = input("Enter filename to store trimmed accessible file- {}: ".format(i+1))
+    access_output_filename = f"crop_access_seq{i+1}.txt"
     final_optimal_length, cropped_accessible_file = crop_sequences(bedtool_txt_access_list[i], access_output_filename)
     trim_access_seq_list.append(cropped_accessible_file)
     optimal_length_list.append(final_optimal_length)
-    print("Final_optimal_length: ", final_optimal_length)
-print(trim_access_seq_list)
-print(optimal_length_list)
+    #print("Final_optimal_length: ", final_optimal_length)
+print("Trimmed access sequence list: \n", trim_access_seq_list)
+print('\n')
+print("Trimmed accessible sequences average lengths list: \n", optimal_length_list)
+print('\n')
 
 OPTIMAL_LENGTH = min(optimal_length_list)
-print("Final optimal length: ",OPTIMAL_LENGTH)
+print("Final optimal length for all trimmed accessible sequences:\n ", OPTIMAL_LENGTH)
+print('\n')
+
+final_trim_access_seq_list = []
+final_access_sequence_optimal_length_list = []
+for i in range(len(bedtool_txt_access_list)):
+    #access_output_filename = input("Enter filename to store final trimmed accessible file- {}: ".format(i+1))
+    access_output_finalname = f"final_crop_access_seq{i+1}.txt"
+    final_length, final_crop_accessible_file = crop_final_sequences(bedtool_txt_access_list[i], access_output_finalname, OPTIMAL_LENGTH)
+    final_trim_access_seq_list.append(final_crop_accessible_file)
+    final_access_sequence_optimal_length_list.append(final_length)
+    #print("Final trimmed access sequence length: ", final_length)
+print("Final trimmed accessible sequences list: \n", final_trim_access_seq_list)
+print('\n')
+print("Final trimmed accessible sequences length list(optimal length): \n", final_access_sequence_optimal_length_list)
+print('\n')
 
 unaccess_bed_list = []
 for i in range(len(access_bed_list)):
-    unaccess_bed_filename = input("Enter unaccess bed file name for file {}: ".format(access_bed_list[i]))
+    #unaccess_bed_filename = input("Enter unaccess bed file name for file {}: ".format(access_bed_list[i]))
+    unaccess_bed_filename = f"unaccess_bed{i+1}.bed"
     accessible_intervals = read_accessible_bed_file(access_bed_list[i])
     unaccessible_intervals = get_unaccessible_portion(accessible_intervals)
     unaccess_bed_list.append(create_unaccessible_bed_file(unaccess_bed_filename, unaccessible_intervals))
 
-print(unaccess_bed_list)
+print("List of unaccessible bed files: \n", unaccess_bed_list)
+print('\n')
 
 bedtool_txt_unaccess_list = []
 
 for i in range(len(unaccess_bed_list)):
-    bedtool_txt_unaccess_list.append(bed_to_txt(unaccess_bed_list[i]))
-print(bedtool_txt_unaccess_list)
+    output_txt_filename = f"unaccess_seq{i+1}.txt"
+    bedtool_txt_unaccess_list.append(bed_to_txt(unaccess_bed_list[i], output_txt_filename))
+print("Unaccess sequences list: \n", bedtool_txt_unaccess_list)
+print('\n')
 
 trim_unaccess_seq_list = []
 unaccess_optimal_length_list = []
 for i in range(len(bedtool_txt_unaccess_list)):
-	unaccess_output_filename = input("Enter filename to store trimmed unaccessible file- {}: ".format(i+1))
-	final_optimal_length, cropped_unaccessible_file = crop_unaccess_sequences(bedtool_txt_unaccess_list[i], unaccess_output_filename, OPTIMAL_LENGTH)
-	trim_unaccess_seq_list.append(cropped_unaccessible_file)
-	unaccess_optimal_length_list.append(final_optimal_length)
+    #unaccess_output_filename = input("Enter filename to store trimmed unaccessible file- {}: ".format(i+1))
+    unaccess_output_filename = f"crop_unaccess_seq{i+1}.txt"
+    final_optimal_length, cropped_unaccessible_file = crop_final_sequences(bedtool_txt_unaccess_list[i], unaccess_output_filename, OPTIMAL_LENGTH)
+    trim_unaccess_seq_list.append(cropped_unaccessible_file)
+    unaccess_optimal_length_list.append(final_optimal_length)
 
-print(trim_unaccess_seq_list)
-print(unaccess_optimal_length_list)
-
+print("Trimmed unaccessible sequences list: \n", trim_unaccess_seq_list)
+print('\n')
+print("Trimmed unaccessible sequences length list(optimal length): \n",unaccess_optimal_length_list)
+print('\n')
 
 
 '''
